@@ -1,12 +1,40 @@
-# React + Vite
+## Frontend Setup Process
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+### Prerequisites
 
-Currently, two official plugins are available:
+- Node.js (v18+ recommended)
+- npm (comes with Node.js)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+### 1. Clone the Repository
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```sh
+git clone https://github.com/MandipJoshi/goji-digital-wallet-mern
+cd frontend
+```
+
+---
+
+### 2. Install Dependencies
+
+```sh
+npm install
+```
+
+---
+
+### 3. Start the Development Server
+
+```sh
+npm run dev
+```
+
+- The app will run at [http://localhost:5173](http://localhost:5173) by default.
+```sh
+npm run lint
+```
+
+---
+
+**Your frontend is now ready for development and testing!**
