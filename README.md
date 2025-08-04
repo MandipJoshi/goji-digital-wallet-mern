@@ -1,1 +1,5 @@
 [Video Demonstration](https://softwaricacollege-my.sharepoint.com/:v:/g/personal/240328_softwarica_edu_np/EXfbmOPxVo1HgGB4qmr7TusBErbBsQDN_ynqUXABvxFOQg?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=yv5hb6)
+
+[Backend Setup](backend/README.md)
+
+[Frontend Setup](frontend/README.md)
