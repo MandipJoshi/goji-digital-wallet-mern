@@ -11,16 +11,20 @@ const jwt = require('jsonwebtoken');
 // Suspend a user account (admin only)
 const suspendUser = async (req, res) => {
     try {
-        const { user_id } = req.params;
-        const admin_id = req.user.admin_id; // Make sure your auth middleware sets this for admins
+        const { user_id } = req.params;  // Get the user_id from request parameters
+        const admin_id = req.user.admin_id;  // Get the admin_id from the request (set by auth middleware)
+        
+        // Find the user by user_id
         const user = await User.findByPk(user_id);
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
+        
+        // Change the user's status to 'suspended'
         user.status = 'suspended';
         await user.save();
 
-        // Log activity
+        // Log the admin action
         await AdminActivityLog.create({
             admin_id,
             action: 'suspend_user',
@@ -37,16 +41,20 @@ const suspendUser = async (req, res) => {
 // Freeze a wallet (admin only)
 const freezeWallet = async (req, res) => {
     try {
-        const { wallet_id } = req.params;
-        const admin_id = req.user.admin_id; // Make sure your auth middleware sets this for admins
+        const { wallet_id } = req.params;  // Get the wallet_id from request parameters
+        const admin_id = req.user.admin_id;  // Get the admin_id from the request
+        
+        // Find the wallet by wallet_id
         const wallet = await Wallet.findByPk(wallet_id);
         if (!wallet) {
             return res.status(404).json({ success: false, message: "Wallet not found" });
         }
+        
+        // Set the wallet's status to inactive (frozen)
         wallet.is_active = false;
         await wallet.save();
 
-        // Log activity
+        // Log the admin action
         await AdminActivityLog.create({
             admin_id,
             action: 'freeze_wallet',
@@ -63,16 +71,20 @@ const freezeWallet = async (req, res) => {
 // Unfreeze a wallet (admin only)
 const unfreezeWallet = async (req, res) => {
     try {
-        const { wallet_id } = req.params;
-        const admin_id = req.user.admin_id; // Make sure your auth middleware sets this for admins
+        const { wallet_id } = req.params;  // Get the wallet_id from request parameters
+        const admin_id = req.user.admin_id;  // Get the admin_id from the request
+        
+        // Find the wallet by wallet_id
         const wallet = await Wallet.findByPk(wallet_id);
         if (!wallet) {
             return res.status(404).json({ success: false, message: "Wallet not found" });
         }
+        
+        // Set the wallet's status to active (unfrozen)
         wallet.is_active = true;
         await wallet.save();
 
-        // Log activity
+        // Log the admin action
         await AdminActivityLog.create({
             admin_id,
             action: 'unfreeze_wallet',
@@ -89,26 +101,29 @@ const unfreezeWallet = async (req, res) => {
 // (Admin) Verify or reject KYC
 const reviewKYC = async (req, res) => {
     try {
-        const { kyc_id } = req.params;
-        const { status } = req.body; // should be 'verified' or 'rejected'
-        const admin_id = req.user.admin_id; // Make sure your auth middleware sets this for admins
-
+        const { kyc_id } = req.params;  // Get the kyc_id from request parameters
+        const { status } = req.body;  // Status should be 'verified' or 'rejected'
+        const admin_id = req.user.admin_id;  // Get the admin_id from the request
+        
+        // Validate the status
         if (!['verified', 'rejected'].includes(status)) {
             return res.status(400).json({ success: false, message: "Invalid status." });
         }
 
+        // Find the KYC record by kyc_id
         const kyc = await KYC.findByPk(kyc_id);
         if (!kyc) {
             return res.status(404).json({ success: false, message: "KYC not found." });
         }
 
+        // Update the KYC status
         kyc.status = status;
         if (status === 'verified') {
             kyc.verified_at = new Date();
         }
         await kyc.save();
 
-        // Log activity
+        // Log the admin action
         await AdminActivityLog.create({
             admin_id,
             action: status === 'verified' ? 'verify_kyc' : 'reject_kyc',
@@ -125,14 +140,16 @@ const reviewKYC = async (req, res) => {
 // (Admin) Solve dispute
 const solveDispute = async (req, res) => {
     try {
-        const { dispute_id } = req.params;
-        const { resolution } = req.body; // 'accepted' or 'rejected'
-        const admin_id = req.user.admin_id; // Make sure your auth middleware sets this for admins
-
+        const { dispute_id } = req.params;  // Get the dispute_id from request parameters
+        const { resolution } = req.body;  // Resolution should be 'accepted' or 'rejected'
+        const admin_id = req.user.admin_id;  // Get the admin_id from the request
+        
+        // Validate the resolution
         if (!['accepted', 'rejected'].includes(resolution)) {
             return res.status(400).json({ success: false, message: "Invalid resolution." });
         }
 
+        // Find the dispute by dispute_id
         const dispute = await Dispute.findByPk(dispute_id);
         if (!dispute) {
             return res.status(404).json({ success: false, message: "Dispute not found." });
@@ -141,6 +158,7 @@ const solveDispute = async (req, res) => {
             return res.status(400).json({ success: false, message: "Dispute already resolved or rejected." });
         }
 
+        // Find the associated transaction and wallets
         const transaction = await Transaction.findByPk(dispute.transaction_id);
         if (!transaction) {
             return res.status(404).json({ success: false, message: "Transaction not found." });
@@ -155,15 +173,14 @@ const solveDispute = async (req, res) => {
 
         const amount = parseFloat(transaction.amount);
 
+        // Resolve or reject the dispute based on the resolution
         if (resolution === 'rejected') {
-            // Release hold: move hold_balance back to receiver's main balance
             receiverWallet.hold_balance = parseFloat(receiverWallet.hold_balance) - amount;
             receiverWallet.balance = parseFloat(receiverWallet.balance) + amount;
             dispute.status = 'rejected';
         } else if (resolution === 'accepted') {
-            // Deduct from receiver's hold_balance and main balance, add to sender's balance
             receiverWallet.hold_balance = parseFloat(receiverWallet.hold_balance) - amount;
-            receiverWallet.balance = parseFloat(receiverWallet.balance); // Already deducted when dispute created
+            receiverWallet.balance = parseFloat(receiverWallet.balance);
             senderWallet.balance = parseFloat(senderWallet.balance) + amount;
             dispute.status = 'resolved';
         }
@@ -172,7 +189,7 @@ const solveDispute = async (req, res) => {
         await senderWallet.save();
         await dispute.save();
 
-        // Log activity
+        // Log the admin action
         await AdminActivityLog.create({
             admin_id,
             action: resolution === 'accepted' ? 'accept_dispute' : 'reject_dispute',
@@ -189,6 +206,7 @@ const solveDispute = async (req, res) => {
 // Get all users (admin only)
 const getAllUsers = async (req, res) => {
     try {
+        // Fetch all users
         const users = await User.findAll();
         res.json({ users });
     } catch (error) {
@@ -199,6 +217,7 @@ const getAllUsers = async (req, res) => {
 // Get all wallets (admin only)
 const getAllWallets = async (req, res) => {
     try {
+        // Fetch all wallets
         const wallets = await Wallet.findAll();
         res.json({ wallets });
     } catch (error) {
@@ -209,6 +228,7 @@ const getAllWallets = async (req, res) => {
 // Get all KYC records (admin only)
 const getAllKycs = async (req, res) => {
     try {
+        // Fetch all KYC records
         const kycs = await KYC.findAll();
         res.json({ kycs });
     } catch (error) {
@@ -219,6 +239,7 @@ const getAllKycs = async (req, res) => {
 // Get all disputes (admin only)
 const getAllDisputes = async (req, res) => {
     try {
+        // Fetch all disputes
         const disputes = await Dispute.findAll();
         res.json({ disputes });
     } catch (error) {
@@ -229,16 +250,20 @@ const getAllDisputes = async (req, res) => {
 // Activate a user account (admin only)
 const activateUser = async (req, res) => {
     try {
-        const { user_id } = req.params;
-        const admin_id = req.user.admin_id; // Make sure your auth middleware sets this for admins
+        const { user_id } = req.params;  // Get the user_id from request parameters
+        const admin_id = req.user.admin_id;  // Get the admin_id from the request
+        
+        // Find the user by user_id
         const user = await User.findByPk(user_id);
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
+        
+        // Change the user's status to 'active'
         user.status = 'active';
         await user.save();
 
-        // Log activity
+        // Log the admin action
         await AdminActivityLog.create({
             admin_id,
             action: 'activate_user',
@@ -255,20 +280,25 @@ const activateUser = async (req, res) => {
 // Admin login
 const adminLogin = async (req, res) => {
     try {
-        const { admin_code, password } = req.body;
+        const { admin_code, password } = req.body;  // Get admin login credentials
         const admin = await Admin.findOne({ where: { admin_code, is_active: true } });
         if (!admin) {
             return res.status(404).json({ success: false, message: "Admin not found or inactive" });
         }
+        
+        // Compare password with hashed password
         const isMatch = await bcrypt.compare(password, admin.password_hash);
         if (!isMatch) {
             return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
+        
+        // Generate a JWT token for the admin
         const token = jwt.sign(
             { admin_id: admin.admin_id, admin_code: admin.admin_code },
             process.env.JWT_TOKEN,
             { expiresIn: '30m' }
         );
+        
         return res.status(200).json({
             success: true,
             message: 'Admin login successful',
